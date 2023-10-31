@@ -1,3 +1,58 @@
+Test React JS 
+create "MyTable" component that has the following props {tableName, editable, endpoint}
+and display the data fetched form the "endpoint" using custom hook called "useHTTP", and it
+displays the headers of the table from a global state called "useHeaders".
+if the prop "editable" is provided, then the content of the rows can be modified within the row, and
+also I can add or delete rows with a buttons beside each row.
+the data of each table can be accessed form a global state called "useTableStore".
+===== Details =====
+=== useHTTP ===
+is a custom hook that uses axios and return the following:
+1- sendHTTP: function that take 3 parameters (url, method, data).
+2- res: Object has 3 states (data, loading, error).
+=== useHeaders ===
+a zustand state the contains object each item has a key of the tableName and value of an object
+of the tables' headers with translation, Example:
+{
+users: {
+,"السم" :name
+"العمر" :age
+},
+payment: {
+,"رقم الحساب" :id_account
+"البلغ" :amount
+}
+}
+
+=== useTableStore ===
+a zustand state the contains object each item has a key of the tableName and value of an object
+of the tables' data, Example:
+{
+users: {
+data: [
+{
+"محمد" :name
+age: 25
+},
+{
+"علي" :name
+age: 30
+},
+]
+},
+payment: {
+data: [
+{
+account_id: 16,
+amount: 30000
+},
+{
+account_id: 3,
+amount: 70000
+}
+]
+}}
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
