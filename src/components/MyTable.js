@@ -2,6 +2,13 @@ import React, { useEffect, useState } from "react";
 import useHTTP from "../hooks/useHTTP";
 import useHeaders from "../hooks/useHeaders";
 import useTableStore from "../store/useTableStore";
+import MyInput from "./MyInput";
+import MyButton from "./MyButton";
+
+const cellStyle = {
+  padding: "5px",
+  fontSize: '18px'
+};
 
 function MyTable({ tableName, editable, endpoint }) {
   const { tables, updateTableData } = useTableStore();
@@ -17,12 +24,12 @@ function MyTable({ tableName, editable, endpoint }) {
     }
   }, [sendHTTP, endpoint]);
 
-  //   useEffect(() => {
-  //     // Update table data in the global state when the HTTP response data changes
-  //     if (!res?.loading && !res?.error) {
-  //       updateTableData(tableName, res?.data);
-  //     }
-  //   }, [res, tableName, updateTableData]);
+  useEffect(() => {
+    // Update table data in the global state when the HTTP response data changes
+    if (!res?.loading && !res?.error && res?.data !== null) {
+      updateTableData(tableName, res?.data);
+    }
+  }, [res, tableName, updateTableData]);
 
   useEffect(() => {
     // Set the table headers from the global state based on the provided tableName
@@ -31,20 +38,27 @@ function MyTable({ tableName, editable, endpoint }) {
     }
   }, [tableName, headers]);
 
+  const isEmptyRow = (row) => {
+    return (row.name && row.age) || (row.account_id && row.amount);
+  };
+
   const handleEdit = (rowData, rowIndex) => {
+    // Set the editableRowData state
     setEditableRowData({ ...rowData, editing: true, index: rowIndex });
   };
 
   const handleSaveEdit = (rowData, rowIndex) => {
     // When the save button is clicked after editing, update the global state
-    const updatedData = tables[tableName]?.data.map((row, index) => {
-      if (index === rowIndex) {
-        return editableRowData;
-      }
-      return row;
-    });
-    updateTableData(tableName, updatedData);
-    setEditableRowData({});
+    if (isEmptyRow(editableRowData)) {
+      const updatedData = tables[tableName]?.data.map((row, index) => {
+        if (index === rowIndex) {
+          return editableRowData;
+        }
+        return row;
+      });
+      updateTableData(tableName, updatedData);
+      setEditableRowData({});
+    }
   };
 
   const handleCancelEdit = () => {
@@ -60,7 +74,8 @@ function MyTable({ tableName, editable, endpoint }) {
 
   const handleSaveNewRow = () => {
     // Save the new row to the global state
-    if (editableRowData.index === -1) {
+    //
+    if (isEmptyRow(editableRowData) && editableRowData.index === -1) {
       const updatedData = [...tables[tableName]?.data, editableRowData];
       updateTableData(tableName, updatedData);
       setEditableRowData({});
@@ -78,81 +93,81 @@ function MyTable({ tableName, editable, endpoint }) {
   const tableDataForTable = tables[tableName] || { data: [] };
 
   return (
-    <div style={{ margin: "15px" }}>
-      {editable && <button onClick={handleAddRow}>Add Row</button>}
+    <div style={{ margin: "30px", textAlign: "right" }}>
+      {editable && <MyButton BtnTxt="اضافة صف" HandleFunc={handleAddRow} />}
       <table border={1} width={"100%"} dir="rtl">
-        <tr>
-          {tableHeaders?.map((header, index) => (
-            <th key={index}>{headers[tableName][header]}</th>
-          ))}
-          {editable && <th>Update</th>}
-        </tr>
-        {tableDataForTable?.data?.map((rowData, rowIndex) => (
-          <tr key={rowIndex}>
-            {tableHeaders?.map((header, index) => (
-              <td key={index}>
-                {editableRowData?.editing &&
-                editableRowData?.index === rowIndex ? (
-                  <input
-                    type="text"
-                    value={editableRowData[header]}
-                    onChange={(e) =>
-                      setEditableRowData({
-                        ...editableRowData,
-                        [header]: e.target.value,
-                      })
-                    }
-                  />
-                ) : (
-                  rowData[header]
-                )}
-              </td>
-            ))}
-            {editable && (
-              <td>
-                {editableRowData?.editing &&
-                editableRowData?.index === rowIndex ? (
-                  <>
-                    <button onClick={() => handleSaveEdit(rowData, rowIndex)}>
-                      Save
-                    </button>
-                    <button onClick={handleCancelEdit}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEdit(rowData, rowIndex)}>
-                      Edit
-                    </button>
-                    <button onClick={() => handleDeleteRow(rowIndex)}>
-                      Delete
-                    </button>
-                  </>
-                )}
-              </td>
-            )}
-          </tr>
-        ))}
-        {editableRowData?.editing && editableRowData?.index === -1 && (
+        <thead>
           <tr>
             {tableHeaders?.map((header, index) => (
-              <td key={index}>
-                <input
-                  type="text"
-                  value={editableRowData[header]}
-                  onChange={(e) =>
-                    setEditableRowData({
-                      ...editableRowData,
-                      [header]: e.target.value,
-                    })
-                  }
-                />
-              </td>
+              <th key={index} style={cellStyle}>
+                {headers[tableName][header]}
+              </th>
             ))}
-            <td>
-              <button onClick={handleSaveNewRow}>Save</button>
-            </td>
+            {editable && <th style={cellStyle}>تحديث</th>}
           </tr>
-        )}
+        </thead>
+        <tbody>
+          {tableDataForTable?.data?.map((rowData, rowIndex) => (
+            <tr key={rowIndex}>
+              {tableHeaders?.map((header, index) => (
+                <td key={index} style={cellStyle}>
+                  {editableRowData?.editing &&
+                  editableRowData?.index === rowIndex ? (
+                    <MyInput
+                      Header={header}
+                      EditableRowData={editableRowData}
+                      SetEditableRowData={setEditableRowData}
+                    />
+                  ) : (
+                    rowData[header]
+                  )}
+                </td>
+              ))}
+              {editable && (
+                <td style={cellStyle}>
+                  {editableRowData?.editing &&
+                  editableRowData?.index === rowIndex ? (
+                    <>
+                      <MyButton
+                        BtnTxt="حفظ"
+                        HandleFunc={() => handleSaveEdit(rowData, rowIndex)}
+                      />
+                      <MyButton BtnTxt="الغاء" HandleFunc={handleCancelEdit} />
+                    </>
+                  ) : (
+                    <>
+                      <MyButton
+                        BtnTxt="تعديل"
+                        HandleFunc={() => handleEdit(rowData, rowIndex)}
+                      />
+                      <MyButton
+                        BtnTxt="حذف"
+                        HandleFunc={() => handleDeleteRow(rowIndex)}
+                      />
+                    </>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+          {editableRowData?.editing && editableRowData?.index === -1 && (
+            <tr>
+              {tableHeaders?.map((header, index) => (
+                <td key={index} style={cellStyle}>
+                  <MyInput
+                    Header={header}
+                    EditableRowData={editableRowData}
+                    SetEditableRowData={setEditableRowData}
+                  />
+                </td>
+              ))}
+              <td style={cellStyle}>
+                <MyButton BtnTxt="حفظ" HandleFunc={handleSaveNewRow} />
+                <MyButton BtnTxt="الغاء" HandleFunc={handleCancelEdit} />
+              </td>
+            </tr>
+          )}
+        </tbody>
       </table>
     </div>
   );
