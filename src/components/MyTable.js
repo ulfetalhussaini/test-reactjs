@@ -5,31 +5,35 @@ import useTableStore from "../store/useTableStore";
 import MyInput from "./MyInput";
 import MyButton from "./MyButton";
 
+const baseUrl = "http://localhost:5000"; // The base URL of mock API server
+
 const cellStyle = {
   padding: "5px",
-  fontSize: '18px'
+  fontSize: "18px",
 };
 
 function MyTable({ tableName, editable, endpoint }) {
   const { tables, updateTableData } = useTableStore();
-  const { sendHTTP, res } = useHTTP();
+  const { sendHTTP } = useHTTP();
   const { state: headers } = useHeaders();
   const [tableHeaders, setTableHeaders] = useState([]);
   const [editableRowData, setEditableRowData] = useState({});
 
   useEffect(() => {
-    // Fetch data from the endpoint
-    if (endpoint) {
-      sendHTTP(endpoint, "GET", null);
-    }
-  }, [sendHTTP, endpoint]);
+    const fetchUserData = async (endpoint) => {
+      try {
+        const response = await sendHTTP(`${baseUrl}/${endpoint}`, "GET");
+        updateTableData(tableName, response);
+        return response;
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    };
 
-  useEffect(() => {
-    // Update table data in the global state when the HTTP response data changes
-    if (!res?.loading && !res?.error && res?.data !== null) {
-      updateTableData(tableName, res?.data);
+    if (endpoint) {
+      fetchUserData(endpoint);
     }
-  }, [res, tableName, updateTableData]);
+  }, [endpoint]);
 
   useEffect(() => {
     // Set the table headers from the global state based on the provided tableName
@@ -38,7 +42,7 @@ function MyTable({ tableName, editable, endpoint }) {
     }
   }, [tableName, headers]);
 
-  const isEmptyRow = (row) => {
+  const isNotEmptyRow = (row) => {
     return (row.name && row.age) || (row.account_id && row.amount);
   };
 
@@ -47,17 +51,26 @@ function MyTable({ tableName, editable, endpoint }) {
     setEditableRowData({ ...rowData, editing: true, index: rowIndex });
   };
 
-  const handleSaveEdit = (rowData, rowIndex) => {
-    // When the save button is clicked after editing, update the global state
-    if (isEmptyRow(editableRowData)) {
-      const updatedData = tables[tableName]?.data.map((row, index) => {
-        if (index === rowIndex) {
-          return editableRowData;
-        }
-        return row;
-      });
-      updateTableData(tableName, updatedData);
-      setEditableRowData({});
+  const handleSaveEdit = async (rowData, rowIndex) => {
+    // Update the global state
+    try {
+      if (isNotEmptyRow(editableRowData)) {
+        const response = await sendHTTP(
+          `${baseUrl}/${endpoint}/${rowData.id}`,
+          "PUT",
+          editableRowData
+        );
+        const updatedData = tables[tableName]?.data.map((row, index) => {
+          if (index === rowIndex) {
+            return response;
+          }
+          return row;
+        });
+        updateTableData(tableName, updatedData);
+        setEditableRowData({});
+      }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
@@ -72,22 +85,35 @@ function MyTable({ tableName, editable, endpoint }) {
     setEditableRowData(newRowData);
   };
 
-  const handleSaveNewRow = () => {
+  const handleSaveNewRow = async () => {
     // Save the new row to the global state
-    //
-    if (isEmptyRow(editableRowData) && editableRowData.index === -1) {
-      const updatedData = [...tables[tableName]?.data, editableRowData];
-      updateTableData(tableName, updatedData);
-      setEditableRowData({});
+    try {
+      if (isNotEmptyRow(editableRowData) && editableRowData.index === -1) {
+        const response = await sendHTTP(
+          `${baseUrl}/${endpoint}`,
+          "POST",
+          editableRowData
+        );
+        const updatedData = [...tables[tableName]?.data, response];
+        updateTableData(tableName, updatedData);
+        setEditableRowData({});
+      }
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
-  const handleDeleteRow = (rowIndex) => {
-    // Delete the specified row from the global state
-    const updatedData = tables[tableName].data?.filter(
-      (_, index) => index !== rowIndex
-    );
-    updateTableData(tableName, updatedData);
+  const handleDeleteRow = async (rowIndex, rowData) => {
+    // Delete the specified row
+    try {
+      await sendHTTP(`${baseUrl}/${endpoint}/${rowData.id}`, "DELETE");
+      const updatedData = tables[tableName].data?.filter(
+        (_, index) => index !== rowIndex
+      );
+      updateTableData(tableName, updatedData);
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   const tableDataForTable = tables[tableName] || { data: [] };
@@ -142,7 +168,7 @@ function MyTable({ tableName, editable, endpoint }) {
                       />
                       <MyButton
                         BtnTxt="حذف"
-                        HandleFunc={() => handleDeleteRow(rowIndex)}
+                        HandleFunc={() => handleDeleteRow(rowIndex, rowData)}
                       />
                     </>
                   )}
