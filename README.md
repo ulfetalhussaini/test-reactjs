@@ -57,6 +57,7 @@ amount: 70000
 
 ** Note
 After running react, run the server:
+
 json-server --watch db.json --port 5000
 
 
